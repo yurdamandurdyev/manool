@@ -3,44 +3,60 @@ import * as THREE from 'three';
 /** Reconstructed facial artwork, projected onto the original FBX geometry.
  * This is an editable approximation of the reference, not the missing source texture.
  */
-export function createManoolTexture() {
+function createFaceArtwork() {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 1024;
+  const glowCanvas = document.createElement('canvas');
+  canvas.width = canvas.height = glowCanvas.width = glowCanvas.height = 1024;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#f36b32';
-  ctx.fillRect(0, 0, 1024, 1024);
-  // Coordinates use the normalized model's front view, so seams do not split eyes.
-  const eye = (x: number, mirror: number) => {
-    ctx.save();
-    ctx.translate(x, 555);
-    ctx.scale(mirror, 1);
-    ctx.beginPath();
-    ctx.moveTo(-165, -85);
-    ctx.quadraticCurveTo(-20, -65, 150, -30);
-    ctx.quadraticCurveTo(155, 50, 75, 100);
-    ctx.quadraticCurveTo(-45, 125, -150, 45);
-    ctx.closePath();
-    ctx.fillStyle = '#e6c51d'; ctx.fill();
-    ctx.clip();
-    ctx.beginPath();
-    ctx.moveTo(-32, -110);
-    ctx.bezierCurveTo(-52, -20, -56, 70, 6, 73);
-    ctx.bezierCurveTo(68, 77, 82, -25, 77, -100);
-    ctx.closePath(); ctx.fillStyle = '#242523'; ctx.fill();
-    ctx.restore();
-  };
-  eye(333, 1); eye(691, -1);
-  ctx.fillStyle = '#242523';
-  for (const [x, y, rx, ry, rotation] of [
-    [407, 332, 49, 27, .65], [514, 304, 35, 26, -.15],
-    [615, 340, 62, 25, -.45], [505, 393, 36, 26, 0],
-  ]) {
-    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rotation, 0, Math.PI * 2); ctx.fill();
-  }
+  const glow = glowCanvas.getContext('2d')!;
   const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-  return texture;
+  const emissiveMap = new THREE.CanvasTexture(glowCanvas);
+  for (const map of [texture, emissiveMap]) {
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.anisotropy = 4;
+  }
+  let previous = -1;
+  const setEyeOpenness = (openness: number) => {
+    // Upload only while blinking; the two maps stay unchanged between blinks.
+    const open = Math.round(THREE.MathUtils.clamp(openness, .025, 1) * 60) / 60;
+    if (open === previous) return;
+    previous = open;
+    ctx.fillStyle = '#f36b32'; ctx.fillRect(0, 0, 1024, 1024);
+    glow.fillStyle = '#000'; glow.fillRect(0, 0, 1024, 1024);
+    const eye = (context: CanvasRenderingContext2D, x: number, mirror: number, glowOnly: boolean) => {
+      context.save();
+      context.translate(x, 555);
+      context.scale(mirror, open);
+      context.beginPath();
+      context.moveTo(-165, -85);
+      context.quadraticCurveTo(-20, -65, 150, -30);
+      context.quadraticCurveTo(155, 50, 75, 100);
+      context.quadraticCurveTo(-45, 125, -150, 45);
+      context.closePath();
+      context.fillStyle = '#e6c51d'; context.fill();
+      context.clip();
+      context.beginPath();
+      context.moveTo(-32, -110);
+      context.bezierCurveTo(-52, -20, -56, 70, 6, 73);
+      context.bezierCurveTo(68, 77, 82, -25, 77, -100);
+      context.closePath(); context.fillStyle = glowOnly ? '#000' : '#242523'; context.fill();
+      context.restore();
+    };
+    for (const [x, mirror] of [[333, 1], [691, -1]]) {
+      eye(ctx, x, mirror, false);
+      eye(glow, x, mirror, true);
+    }
+    ctx.fillStyle = '#242523';
+    for (const [x, y, rx, ry, rotation] of [
+      [407, 332, 49, 27, .65], [514, 304, 35, 26, -.15],
+      [615, 340, 62, 25, -.45], [505, 393, 36, 26, 0],
+    ]) {
+      ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rotation, 0, Math.PI * 2); ctx.fill();
+    }
+    texture.needsUpdate = emissiveMap.needsUpdate = true;
+  };
+  setEyeOpenness(1);
+  return { texture, emissiveMap, setEyeOpenness };
 }
 
 export function rebuildMaterials(model: THREE.Group) {
@@ -49,8 +65,8 @@ export function rebuildMaterials(model: THREE.Group) {
   const center = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
   const scale = 2.8 / Math.max(size.x, size.y, size.z);
-  const artwork = createManoolTexture();
-  const face = new THREE.MeshStandardMaterial({ map: artwork, roughness: .88, flatShading: true });
+  const artwork = createFaceArtwork();
+  const face = new THREE.MeshStandardMaterial({ map: artwork.texture, emissiveMap: artwork.emissiveMap, emissive: 0xffffff, emissiveIntensity: .32, roughness: .88, flatShading: true });
   const orange = new THREE.MeshStandardMaterial({ color: 0xf36b32, roughness: .88, flatShading: true });
   const result = new THREE.Group();
   model.traverse(node => {
@@ -76,5 +92,5 @@ export function rebuildMaterials(model: THREE.Group) {
     geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     result.add(new THREE.Mesh(geometry, [face, orange]));
   });
-  return result;
+  return { group: result, setEyeOpenness: artwork.setEyeOpenness };
 }
