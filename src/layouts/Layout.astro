@@ -1,0 +1,15 @@
+---
+import '../styles/global.css';
+import '../styles/site.scss';
+import { Dock } from '../components/unlumen-ui/dock';
+import Preloader from '../components/Preloader.astro';
+interface Props { title?: string }
+const { title = 'MANOOL — дизайн-студия' } = Astro.props;
+const links = [{ label: 'Наши кейсы', href: '/cases/' }, { label: 'Контакты', href: '/contacts/' }, { label: 'Полезное', href: '/articles/' }, { label: 'О нас', href: '/about/' }];
+---
+<!doctype html>
+<html lang="ru"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="description" content="MANOOL — дизайн-студия. Кейсы, статьи и контакты."/><title>{title}</title></head><body>
+{Astro.url.pathname === "/" && <Preloader />}
+<header class="site-header"><a class="wordmark" href="/" aria-label="MANOOL — главная">MANOOL</a><Dock items={links} activePath={Astro.url.pathname} magnification={1.22} distance={120} springOptions={{ stiffness: 400, damping: 25 }} client:load /></header>
+<main><slot /></main><footer class="site-footer"><a href="/">MANOOL®</a><span>ДИЗАЙН-СТУДИЯ</span></footer>
+</body></html>

@@ -1,0 +1,35 @@
+<div class="brand-loader" id="brand-loader" role="status" aria-label="Загрузка MANOOL" hidden>
+  <div class="loader-inner">
+    <span class="loader-kicker">ДИЗАЙН С ХАРАКТЕРОМ</span>
+    <div class="loader-logo" aria-hidden="true">
+      <img src="/assets/logo.jpg" alt="" width="1084" height="431" />
+      <img src="/assets/logo.jpg" alt="" width="1084" height="431" />
+      <img src="/assets/logo.jpg" alt="" width="1084" height="431" />
+    </div>
+    <div class="loader-track"><span></span></div>
+    <div class="loader-meta"><span>MANOOL / STUDIO</span><span class="loader-caption">ПРОБУЖДАЕМ МАНУЛА</span></div>
+    <button class="loader-skip" type="button">Пропустить ↗</button>
+  </div>
+</div>
+<script is:inline>
+  (() => {
+    const loader = document.getElementById('brand-loader');
+    if (!loader || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    loader.hidden = false;
+    const started = performance.now();
+    let done = false;
+    const close = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('manool-ready', ready);
+      clearTimeout(fallback);
+      loader.classList.add('is-leaving');
+      setTimeout(() => loader.remove(), 650);
+    };
+    const ready = () => setTimeout(close, Math.max(0, 1600 - (performance.now() - started)));
+    const fallback = setTimeout(close, 6500);
+    window.addEventListener('manool-ready', ready, { once: true });
+    loader.querySelector('button').addEventListener('click', close);
+    if (document.documentElement.dataset.manoolReady) ready();
+  })();
+</script>

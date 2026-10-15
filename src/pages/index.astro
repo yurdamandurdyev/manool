@@ -1,0 +1,17 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ModelViewer from '../components/ModelViewer';
+import { LayeredText } from '../components/ui/layered-text';
+---
+<Layout>
+  <section class="hero hero-split" aria-labelledby="hero-heading">
+    <div class="hero-copy">
+      <p class="eyebrow">MANOOL / ДИЗАЙН-СТУДИЯ</p>
+      <h1 id="hero-heading" class="sr-only">Дизайн с характером</h1>
+      <LayeredText client:load />
+      <p class="hero-description">Превращаем идеи в выразительный дизайн.<br />Со смыслом. С характером. По-своему.</p>
+      <a class="hero-work-link" href="/cases/">Смотреть наши кейсы <span aria-hidden="true">↗</span></a>
+    </div>
+    <div class="hero-model"><ModelViewer client:load /><p class="model-hint">ДВИГАЙТЕ КУРСОРОМ — МАНУЛ СЛЕДИТ</p></div>
+  </section>
+</Layout>
